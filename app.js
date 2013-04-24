@@ -100,12 +100,14 @@ var roundCount = 0;
 
 socketServer.sockets.on('connection', function(socket) {
 	socket.on('register', function(botName) {
+		console.log("Registered " + botName);
 		socket.set('botName', botName);
 		redisClient.sadd('bots', botName);
 		sockets[botName] = socket;
 	});
 	
 	socket.on('pick', function(playerName) {
+		console.log("Picked " + playerName);
 		socket.get('botName', function(err, botName) {
 			redisClient.sismember('players', playerName, function(err, reply) {
 				if(reply) {
@@ -140,6 +142,7 @@ socketServer.sockets.on('connection', function(socket) {
 	});
 	
 	socket.on('startDraft', function() {
+		console.log("Draft Started!");
 		redisClient.scard('bots', function(err, result) {
 			numBots = result;
 		
