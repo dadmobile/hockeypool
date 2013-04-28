@@ -97,6 +97,7 @@ var numBots;
 var turnIndex = 0;
 var numRounds = 10;
 var roundCount = 0;
+var countUp = true;
 
 socketServer.sockets.on('connection', function(socket) {
 	socket.on('register', function(botName) {
@@ -109,24 +110,28 @@ socketServer.sockets.on('connection', function(socket) {
 	socket.on('pick', function(playerName) {
 		console.log("Picked " + playerName);
 		socket.get('botName', function(err, botName) {
+			console.log(botName + " picked " + playerName);
 			redisClient.sismember('players', playerName, function(err, reply) {
 				if(reply) {
 					redisClient.sadd(botName, playerName);
 					redisClient.srem('players', playerName);
 					socketServer.sockets.emit('picked', {player: playerName, by: botName});
 					
-					turnIndex++;
-					
 					var endOfDraft = false;
 					
-					if(turnIndex == numBots) {
+					// find out whose turn it is next
+					turnIndex = (countUp ? turnIndex + 1 : turnIndex - 1);
+					
+					if(turnIndex == numBots || turnIndex < 0) {
+						// new round. time to snake!
 						roundCount++;
+						countUp = !countUp;
+						turnIndex = (countUp ? turnIndex + 1 : turnIndex - 1);
 						
+						// is it the end?
 						if(roundCount == numRounds) {
 							endOfDraft = true;
 						}
-						
-						turnIndex = 0;
 					}
 					
 					if(endOfDraft) {
@@ -147,12 +152,23 @@ socketServer.sockets.on('connection', function(socket) {
 			numBots = result;
 		
 			// slot the bots into their draft order
-			// TODO: make this random?
 			redisClient.smembers('bots', function(err, replies) {
 				replies.forEach(function(reply, i) {
 					bots.push(reply);
 				});
 				
+				// randomize draft order via fisher-yates shuffle
+				var i = bots.length, j, tempi, tempj;
+				if(i === 0) socketServer.sockets.emit('theEnd'); // no bots in the draft!
+				while(--i) {
+					j = Math.floor(Math.random() * (i+1));
+					tempi = bots[i];
+					tempj = bots[j];
+					bots[i] = tempj;
+					bots[j] = tempi;
+				}
+				
+				// start the first round
 				sockets[bots[turnIndex]].emit('yourTurn');
 			});
 		});

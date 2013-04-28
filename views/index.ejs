@@ -102,6 +102,7 @@
 		
 		// this means it's our turn!
 		socket.on('yourTurn', function() {
+			alert("It's your turn!");
 			$('#playerName').prop('disabled', false);
 			$('#goPick').prop('disabled', false);
 		});
